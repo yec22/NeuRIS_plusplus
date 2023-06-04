@@ -1,0 +1,1 @@
+python ./exp_runner.py --mode train --conf ./confs/neuris_wo_dir.conf --gpu 2

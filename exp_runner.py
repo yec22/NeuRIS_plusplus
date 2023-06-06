@@ -108,6 +108,7 @@ class Runner:
 
         # trainning parameters
         self.end_iter = self.conf.get_int('train.end_iter')
+        self.train_stop_iter = self.conf.get_int('train.train_stop_iter')
         self.batch_size = self.conf.get_int('train.batch_size')
         self.validate_resolution_level = self.conf.get_int('train.validate_resolution_level')
         self.learning_rate = self.conf.get_float('train.learning_rate')
@@ -271,7 +272,7 @@ class Runner:
         self.writer = SummaryWriter(log_dir=os.path.join(self.base_exp_dir, 'logs'))
         self.update_learning_rate()
         self.update_iter_step()
-        res_step = self.end_iter - self.iter_step
+        res_step = self.train_stop_iter - self.iter_step
 
         if self.dataset.cache_all_data:
             self.dataset.shuffle()

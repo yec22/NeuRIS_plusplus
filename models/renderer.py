@@ -399,7 +399,7 @@ class NeuSRenderer:
             feature_vector = nn_output[:, 1:]
 
             gradients = self.sdf_network_fine.gradient(vertices).squeeze()
-            sampled_color = self.color_network_fine(vertices, gradients, None, feature_vector).reshape(-1, 3)
+            sampled_color = self.color_network_fine(vertices, gradients, -gradients, feature_vector).reshape(-1, 3)
             sampled_color_list.append(sampled_color.detach().cpu().numpy())
             idx += l
         

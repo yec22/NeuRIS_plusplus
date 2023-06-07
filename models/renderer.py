@@ -314,10 +314,38 @@ class NeuSRenderer:
             'point_peak': point_peak
         }, logs_summary
 
+    def intersect(self, rays_o, rays_d):
+        # phase1: x = 1
+        t1 = (0.99 - rays_o[:, 0]) / (rays_d[:, 0] + 1e-6)
+        t1[t1 < 0] = 1e6
+        # phase2: x = -1
+        t2 = (-0.99 - rays_o[:, 0]) / (rays_d[:, 0] + 1e-6)
+        t2[t2 < 0] = 1e6
+        t = torch.min(t1, t2)
+        # phase3: y = 1
+        t3 = (0.99 - rays_o[:, 1]) / (rays_d[:, 1] + 1e-6)
+        t3[t3 < 0] = 1e6
+        t = torch.min(t, t3)
+        # phase4: y = -1
+        t4 = (-0.99 - rays_o[:, 1]) / (rays_d[:, 1] + 1e-6)
+        t4[t4 < 0] = 1e6
+        t = torch.min(t, t4)
+        # phase5: z = 1
+        t5 = (0.99 - rays_o[:, 2]) / (rays_d[:, 2] + 1e-6)
+        t5[t5 < 0] = 1e6
+        t = torch.min(t, t5)
+        # phase6: z = -1
+        t6 = (-0.99 - rays_o[:, 2]) / (rays_d[:, 2] + 1e-6)
+        t6[t6 < 0] = 1e6
+        t = torch.min(t, t6)
+        
+        return t
+
     def render(self, rays_o, rays_d, near, far, perturb_overwrite=-1, background_rgb=None, alpha_inter_ratio=0.0):
         batch_size = len(rays_o)
-        sphere_diameter = torch.abs(far-near).mean()
-        sample_dist = sphere_diameter / self.n_samples
+        far = self.intersect(rays_o, rays_d).unsqueeze(-1)
+
+        sample_dist = 0
         z_vals = torch.linspace(0.0, 1.0, self.n_samples)
         z_vals = near + (far - near) * z_vals[None, :]
 

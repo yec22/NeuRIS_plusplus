@@ -300,47 +300,6 @@ class SDFNetwork_Plus(nn.Module):
         hidden[mask] += y[:, 1:]
 
         return torch.cat([sdf / self.scale, hidden], dim=-1)
-    
-    def coarse_sdf(self, inputs):
-        inputs = inputs * self.scale
-        
-        mask = (inputs[:, 0] > -1) & (inputs[:, 0] < 1) & (inputs[:, 1] > -1) & (inputs[:, 1] < 1) \
-                & (inputs[:, 2] > -1) & (inputs[:, 2] < 1)
-        mask_input = inputs[mask]
-        xy_index = torch.stack([mask_input[:, 0], mask_input[:, 1]], dim=-1).unsqueeze(0).unsqueeze(-2)
-        yz_index = torch.stack([mask_input[:, 1], mask_input[:, 2]], dim=-1).unsqueeze(0).unsqueeze(-2)
-        xz_index = torch.stack([mask_input[:, 0], mask_input[:, 2]], dim=-1).unsqueeze(0).unsqueeze(-2)
-
-        xy_feat = grid_sample_2d(self.xy_plane, xy_index).squeeze().transpose(0, 1)
-        yz_feat = grid_sample_2d(self.yz_plane, yz_index).squeeze().transpose(0, 1)
-        xz_feat = grid_sample_2d(self.xz_plane, xz_index).squeeze().transpose(0, 1)
-        
-        triplane_feat = torch.cat([xy_feat, yz_feat, xz_feat], dim=-1)
-        
-        if self.use_emb_c2f and self.multires > 0:
-            inputs, weigth_emb_c2f = positional_encoding_c2f(inputs, self.multires, emb_c2f=[self.emb_c2f_start, self.emb_c2f_end], alpha_ratio = (self.iter_step / self.end_iter))
-            self.weigth_emb_c2f = weigth_emb_c2f
-        elif self.embed_fn_fine is not None:
-            inputs = self.embed_fn_fine(inputs)
-        else:
-            NotImplementedError
-
-        x = inputs
-        for l in range(0, self.num_layers - 1):
-            lin = getattr(self, "lin" + str(l))
-
-            if l in self.skip_in:
-                x = torch.cat([x, inputs], 1) / np.sqrt(2)
-
-            x = lin(x)
-
-            if l < self.num_layers - 2:
-                x = self.activation(x)
-        
-        hidden = x[:, 1:]
-        sdf = x[:, :1]
-
-        return sdf / self.scale
 
     def sdf(self, x):
         return self.forward(x)[:, :1]
@@ -361,6 +320,147 @@ class SDFNetwork_Plus(nn.Module):
             only_inputs=True)[0]
         return gradients.unsqueeze(1)
 
+
+class Triplane(nn.Module):
+    def __init__(self,
+                 d_in,
+                 multires=0,
+                 bias=0.5,
+                 scale=1,
+                 reso=256,
+                 f_dim=16,
+                 o_dim=257,
+                 skip_in = [],
+                 decoder_layer=4,
+                 decoder_hidden=512,
+                 geometric_init=True,
+                 weight_norm=True,
+                 activation='softplus',
+                 reverse_geoinit = False,
+                 use_emb_c2f = False,
+                 emb_c2f_start = 0.1,
+                 emb_c2f_end = 0.5):
+        super(Triplane, self).__init__()
+
+        triplane_dims = [3*f_dim] + [decoder_hidden for _ in range(decoder_layer)] + [o_dim]
+
+        self.embed_fn_fine = None
+        self.skip_in = skip_in
+        self.multires = multires
+        if multires > 0:
+            embed_fn, input_ch = get_embedder(multires, input_dims=d_in, normalize=False)
+            self.embed_fn_fine = embed_fn
+            triplane_dims[0] += input_ch
+
+        self.num_layers = len(triplane_dims)
+        self.scale = scale
+        self.use_emb_c2f = use_emb_c2f
+        if self.use_emb_c2f:
+            self.emb_c2f_start = emb_c2f_start
+            self.emb_c2f_end = emb_c2f_end
+            logging.info(f"Use coarse-to-fine embedding (Level: {self.multires}): [{self.emb_c2f_start}, {self.emb_c2f_end}]")
+
+        self.alpha_ratio = 0.0
+
+        self.f_dim = f_dim
+        self.xy_plane = torch.nn.Parameter(0.1 * torch.randn((1, f_dim, reso, reso)))
+        self.yz_plane = torch.nn.Parameter(0.1 * torch.randn((1, f_dim, reso, reso)))
+        self.xz_plane = torch.nn.Parameter(0.1 * torch.randn((1, f_dim, reso, reso)))
+
+        self.decoder_num_layers = len(triplane_dims)
+        for l in range(0, self.decoder_num_layers - 1):
+            out_dim = triplane_dims[l + 1]
+
+            lin = nn.Linear(triplane_dims[l], out_dim)
+
+            if geometric_init:
+                if l == self.num_layers - 2:
+                    if reverse_geoinit:
+                        logging.info(f"Geometry init: Indoor scene (reverse geometric init).")
+                        torch.nn.init.normal_(lin.weight, mean=-np.sqrt(np.pi) / np.sqrt(triplane_dims[l]), std=0.0001)
+                        torch.nn.init.constant_(lin.bias, bias)
+                    else:
+                        logging.info(f"Geometry init: DTU scene (not reverse geometric init).")
+                        torch.nn.init.normal_(lin.weight, mean=np.sqrt(np.pi) / np.sqrt(triplane_dims[l]), std=0.0001)
+                        torch.nn.init.constant_(lin.bias, -bias)
+                elif multires > 0 and l == 0:
+                    torch.nn.init.constant_(lin.bias, 0.0)
+                    torch.nn.init.constant_(lin.weight[:, 3:], 0.0)
+                    torch.nn.init.normal_(lin.weight[:, :3], 0.0, np.sqrt(2) / np.sqrt(out_dim))
+                elif multires > 0 and l in self.skip_in:
+                    torch.nn.init.constant_(lin.bias, 0.0)
+                    torch.nn.init.normal_(lin.weight, 0.0, np.sqrt(2) / np.sqrt(out_dim))
+                    torch.nn.init.constant_(lin.weight[:, -(triplane_dims[0] - 3):], 0.0)
+                else:
+                    torch.nn.init.constant_(lin.bias, 0.0)
+                    torch.nn.init.normal_(lin.weight, 0.0, np.sqrt(2) / np.sqrt(out_dim))
+
+            if weight_norm:
+                lin = nn.utils.weight_norm(lin)
+
+            setattr(self, "lin_tri_" + str(l), lin)
+
+        if activation == 'softplus':
+            self.activation = nn.Softplus(beta=100)
+        else:
+            assert activation == 'relu'
+            self.activation = nn.ReLU()
+
+        self.weigth_emb_c2f = None
+        self.iter_step = 0
+        self.end_iter = 3e5
+
+    def forward(self, inputs):
+        inputs = inputs * self.scale
+        
+        xy_index = torch.stack([inputs[:, 0], inputs[:, 1]], dim=-1).unsqueeze(0).unsqueeze(-2)
+        yz_index = torch.stack([inputs[:, 1], inputs[:, 2]], dim=-1).unsqueeze(0).unsqueeze(-2)
+        xz_index = torch.stack([inputs[:, 0], inputs[:, 2]], dim=-1).unsqueeze(0).unsqueeze(-2)
+
+        xy_feat = grid_sample_2d(self.xy_plane, xy_index).squeeze().transpose(0, 1)
+        yz_feat = grid_sample_2d(self.yz_plane, yz_index).squeeze().transpose(0, 1)
+        xz_feat = grid_sample_2d(self.xz_plane, xz_index).squeeze().transpose(0, 1)
+        
+        triplane_feat = torch.cat([xy_feat, yz_feat, xz_feat], dim=-1)
+        
+        if self.use_emb_c2f and self.multires > 0:
+            inputs, weigth_emb_c2f = positional_encoding_c2f(inputs, self.multires, emb_c2f=[self.emb_c2f_start, self.emb_c2f_end], alpha_ratio = (self.iter_step / self.end_iter))
+            self.weigth_emb_c2f = weigth_emb_c2f
+        elif self.embed_fn_fine is not None:
+            inputs = self.embed_fn_fine(inputs)
+        else:
+            NotImplementedError
+
+        x = torch.cat([inputs, triplane_feat], dim=1)
+
+        for l in range(0, self.decoder_num_layers - 1):
+            lin = getattr(self, "lin_tri_" + str(l))
+
+            x = lin(x)
+
+            if l < self.num_layers - 2:
+                x = self.activation(x)
+
+        return torch.cat([x[:, :1] / self.scale, x[:, 1:]], dim=-1)
+
+    def sdf(self, x):
+        return self.forward(x)[:, :1]
+
+    def sdf_hidden_appearance(self, x):
+        return self.forward(x)
+
+    def gradient(self, x):
+        x.requires_grad_(True)
+        y = self.sdf(x)
+        d_output = torch.ones_like(y, requires_grad=False, device=y.device)
+        gradients = torch.autograd.grad(
+            outputs=y,
+            inputs=x,
+            grad_outputs=d_output,
+            create_graph=True,
+            retain_graph=True,
+            only_inputs=True)[0]
+        return gradients.unsqueeze(1)
 
 class FixVarianceNetwork(nn.Module):
     def __init__(self, base):

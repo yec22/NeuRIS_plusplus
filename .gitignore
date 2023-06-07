@@ -1,3 +1,6 @@
 dataset
 exps
 **cache**
+segment-anything/ckpt
+**egg**
+.vscode

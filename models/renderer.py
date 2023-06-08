@@ -168,6 +168,7 @@ class NeuSRenderer:
         return z_vals, sdf
 
     def render_core(self,
+                    idx,
                     rays_o,
                     rays_d,
                     z_vals,
@@ -199,7 +200,7 @@ class NeuSRenderer:
         feature_vector = sdf_nn_output[:, 1:]
 
         gradients = sdf_network.gradient(pts).squeeze()
-        sampled_color = color_network(pts, gradients, dirs, feature_vector).reshape(batch_size, n_samples, 3)
+        sampled_color = color_network(pts, gradients, dirs, feature_vector, idx).reshape(batch_size, n_samples, 3)
 
         inv_variance = variance_network(torch.zeros([1, 3]))[:, :1].clip(1e-6, 1e6)
         inv_variance = inv_variance.expand(batch_size * n_samples, 1)
@@ -314,7 +315,7 @@ class NeuSRenderer:
             'point_peak': point_peak
         }, logs_summary
 
-    def render(self, rays_o, rays_d, near, far, perturb_overwrite=-1, background_rgb=None, alpha_inter_ratio=0.0):
+    def render(self, idx, rays_o, rays_d, near, far, perturb_overwrite=-1, background_rgb=None, alpha_inter_ratio=0.0):
         batch_size = len(rays_o)
         sphere_diameter = torch.abs(far-near).mean()
         sample_dist = sphere_diameter / self.n_samples
@@ -372,7 +373,7 @@ class NeuSRenderer:
             background_alpha = ret_outside['alpha']
 
         # Render
-        ret_fine, logs_summary = self.render_core(rays_o,
+        ret_fine, logs_summary = self.render_core(idx, rays_o,
                                     rays_d,
                                     z_vals,
                                     sample_dist,
@@ -399,7 +400,7 @@ class NeuSRenderer:
             feature_vector = nn_output[:, 1:]
 
             gradients = self.sdf_network_fine.gradient(vertices).squeeze()
-            sampled_color = self.color_network_fine(vertices, gradients, -gradients, feature_vector).reshape(-1, 3)
+            sampled_color = self.color_network_fine(vertices, gradients, -gradients, feature_vector, -1).reshape(-1, 3)
             sampled_color_list.append(sampled_color.detach().cpu().numpy())
             idx += l
         

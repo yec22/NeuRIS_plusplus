@@ -155,6 +155,7 @@ class Runner:
 
         self.conf['dataset']['data_dir']  = os.path.join(self.conf['general.data_dir'] , self.dataset_type, self.scan_name)
         self.dataset = Dataset(self.conf['dataset'])
+        self.conf['model.rendering_network']['n_images'] = self.dataset.n_images
 
     def build_model(self):
         # Networks
@@ -264,7 +265,8 @@ class Runner:
             'pixels_x': pixels_x,  # u
             'pixels_y': pixels_y,   # v,
             'pixels_uv': pixels_uv,
-            'pixels_vu': pixels_vu
+            'pixels_vu': pixels_vu,
+            'idx': idx_img
         })
         return input_model, logs_input
 
@@ -286,7 +288,7 @@ class Runner:
             input_model, logs_input = self.get_model_input(image_perm, iter_i)
             logs_summary.update(logs_input)
 
-            render_out, logs_render = self.renderer.render(input_model['rays_o'], input_model['rays_d'], 
+            render_out, logs_render = self.renderer.render(input_model['idx'], input_model['rays_o'], input_model['rays_d'], 
                                             input_model['near'], input_model['far'],
                                             background_rgb=input_model['background_rgb'],
                                             alpha_inter_ratio=self.get_alpha_inter_ratio())
@@ -707,7 +709,7 @@ class Runner:
             near, far, _ = self.get_near_far(rays_o = rays_o_batch, rays_d = rays_d_batch)
             background_rgb = torch.ones([1, 3]) if self.use_white_bkgd else None
 
-            render_out, _ = self.renderer.render(rays_o_batch, rays_d_batch, near, far, alpha_inter_ratio=self.get_alpha_inter_ratio(), background_rgb=background_rgb)
+            render_out, _ = self.renderer.render(idx, rays_o_batch, rays_d_batch, near, far, alpha_inter_ratio=self.get_alpha_inter_ratio(), background_rgb=background_rgb)
             feasible = lambda key: ((key in render_out) and (render_out[key] is not None))
 
             for key in imgs_render:
@@ -858,7 +860,7 @@ class Runner:
             near, far, _ = self.get_near_far(rays_o = rays_o_batch, rays_d = rays_d_batch)
             background_rgb = torch.ones([1, 3]) if self.use_white_bkgd else None
 
-            render_out, _ = self.renderer.render(rays_o_batch, rays_d_batch, near, far, alpha_inter_ratio=self.get_alpha_inter_ratio(), background_rgb=background_rgb)
+            render_out, _ = self.renderer.render(idx, rays_o_batch, rays_d_batch, near, far, alpha_inter_ratio=self.get_alpha_inter_ratio(), background_rgb=background_rgb)
 
 
             pts_peak = rays_o_batch + rays_d_batch * render_out['depth_peak']

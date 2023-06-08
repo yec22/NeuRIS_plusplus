@@ -398,12 +398,18 @@ class RenderingNetwork(nn.Module):
             weight_norm=True,
             multires_view=0,
             squeeze_out=True,
+            appear_dim=32,
+            n_images=0
     ):
         super().__init__()
 
         self.mode = mode
         self.squeeze_out = squeeze_out
-        dims = [d_in + d_feature] + [d_hidden for _ in range(n_layers)] + [d_out]
+        dims = [d_in + d_feature + appear_dim] + [d_hidden for _ in range(n_layers)] + [d_out]
+
+        if appear_dim > 0:
+            self.appear_embed = torch.nn.Parameter(0.1 * torch.randn((n_images, appear_dim)))
+        self.appear_dim = appear_dim
 
         self.embedview_fn = None
         if (self.mode != 'no_view_dir') and (multires_view > 0):
@@ -424,7 +430,7 @@ class RenderingNetwork(nn.Module):
 
         self.relu = nn.ReLU()
 
-    def forward(self, points, normals, view_dirs, feature_vectors):
+    def forward(self, points, normals, view_dirs, feature_vectors, idx):
         if self.embedview_fn is not None:
             view_dirs = self.embedview_fn(view_dirs)
 
@@ -437,7 +443,17 @@ class RenderingNetwork(nn.Module):
         elif self.mode == 'no_normal':
             rendering_input = torch.cat([points, view_dirs, feature_vectors], dim=-1)
 
-        x = rendering_input
+        if self.appear_dim > 0:
+            if idx == -1:
+                embed = torch.mean(self.appear_embed, dim=0)
+            else:
+                embed = self.appear_embed[idx]
+            
+            embed = embed.expand(rendering_input.shape[0], self.appear_dim)
+
+            x = torch.cat([rendering_input, embed], dim=-1)
+        else:
+            x = rendering_input
 
         for l in range(0, self.num_layers - 1):
             lin = getattr(self, "lin" + str(l))

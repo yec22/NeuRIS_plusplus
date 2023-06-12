@@ -1,4 +1,4 @@
-from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
+from segment_anything import SamAutomaticMaskGenerator, sam_model_registry, SamPredictor
 import numpy as np
 import cv2
 
@@ -18,9 +18,22 @@ def show_anns(anns):
     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     cv2.imwrite("mask.png", img)
 
+def show_mask(mask, img, score):
+    color = np.clip((np.random.random(3) * 255.), 0, 255).astype(np.uint8)
+    img[mask] = color
+    img = img.astype(np.uint8)
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    cv2.imwrite(f"dataset/indoor/scene0050_00/mask_object1/mask_{score}.png", img)
+
+    mask_img = np.zeros_like(img)
+    mask_img[mask] = 1.
+    mask_img = np.clip((mask_img * 255.), 0, 255).astype(np.uint8)
+    cv2.imwrite(f"dataset/indoor/scene0050_00/mask_object1/mask.png", mask_img)
+
+
 
 if __name__ == "__main__":
-    image = cv2.imread('dataset/indoor/scene0616_00/image/0000.png')
+    image = cv2.imread('dataset/indoor/scene0050_00/image_denoised_cv07211010/0800.png')
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     sam_checkpoint = "segment-anything/ckpt/sam_vit_h_4b8939.pth"
@@ -28,10 +41,16 @@ if __name__ == "__main__":
     device = "cuda:1"
 
     sam = sam_model_registry[model_type](checkpoint=sam_checkpoint).to(device=device)
-    mask_generator = SamAutomaticMaskGenerator(sam)
-    masks = mask_generator.generate(image)
+    predictor = SamPredictor(sam)
+    predictor.set_image(image)
 
-    show_anns(masks)
+    input_point = np.array([[275, 239], [339, 183], [286, 406], [364, 391]])
+    input_label = np.array([1, 1, 1, 1])
 
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-    cv2.imwrite("image.png", image)
+    masks, scores, logits = predictor.predict(
+        point_coords=input_point,
+        point_labels=input_label,
+        multimask_output=True,
+    )
+
+    show_mask(masks[2], image, scores[2])

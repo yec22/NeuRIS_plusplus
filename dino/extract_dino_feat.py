@@ -110,7 +110,7 @@ if __name__ == '__main__':
         obtained by thresholding the self-attention maps to keep xx% of the mass.""")
     args = parser.parse_args()
 
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    device = torch.device("cuda:1") if torch.cuda.is_available() else torch.device("cpu")
     # build model
     model = vits.__dict__[args.arch](patch_size=args.patch_size, num_classes=0)
     for p in model.parameters():
@@ -147,7 +147,7 @@ if __name__ == '__main__':
             print("There is no reference weights available for this model => We use random weights.")
 
     # open image
-    data_dir = "dataset/indoor/scene0580_00/image"
+    data_dir = "dataset/indoor/scene0084_00/image"
     image_file = sorted(os.listdir(data_dir))
 
     for file in tqdm(image_file):
@@ -181,8 +181,25 @@ if __name__ == '__main__':
         attentions = attentions[0, 1:, :].transpose(0, 1)
 
         attentions = attentions.reshape(nh, w_featmap, h_featmap)
-        attentions = nn.functional.interpolate(attentions.unsqueeze(0), scale_factor=args.patch_size, mode="nearest")[0].cpu().numpy()
+        attentions = nn.functional.interpolate(attentions.unsqueeze(0), scale_factor=args.patch_size, mode="bilinear")[0].cpu().numpy()
         attentions = attentions.transpose(1, 2, 0)
+        H, W, C = attentions.shape
+        from sklearn.decomposition import PCA
+        pca = PCA(n_components=32)
+        pca_attentions = pca.fit_transform(attentions.reshape(-1, C))
+        pca_attentions = pca_attentions.reshape(H, W, 32)
 
-        # print(attentions.shape)
-        np.save(f"dataset/indoor/scene0580_00/dino_feature/{file[:4]}.npy", attentions)
+        for i in range(pca_attentions.shape[-1]):
+            attn = pca_attentions[:, :, i]
+            attn_min, attn_max = attn.min(), attn.max()
+            pca_attentions[:, :, i] = (attn - attn_min) / (attn_max - attn_min)
+
+        # for i in range(pca_attentions.shape[-1]):
+        #     attn = pca_attentions[:, :, i]
+        #     attn_min, attn_max = attn.min(), attn.max()
+        #     attn = (attn - attn_min) / (attn_max - attn_min)
+        #     attn = np.clip((attn * 255.), 0, 255).astype(np.uint8)
+        #     cv2.imwrite(f"head{i}.png", attn)
+        # exit(0)
+
+        np.save(f"dataset/indoor/scene0084_00/dino_feature/{file[:4]}.npy", pca_attentions)

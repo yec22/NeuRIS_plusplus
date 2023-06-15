@@ -292,9 +292,7 @@ class SDFNetwork_Plus(nn.Module):
             lin = getattr(self, "lin_tri_" + str(l))
 
             y = lin(y)
-
-            if l < self.num_layers - 2:
-                y = self.activation(y)
+            y = self.activation(y)
 
         sdf[mask] += y[:, :1]
         hidden[mask] += y[:, 1:]

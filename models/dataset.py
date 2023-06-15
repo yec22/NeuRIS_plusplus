@@ -57,6 +57,7 @@ class Dataset:
         self.conf = conf
 
         self.data_dir = conf['data_dir']
+        # self.reso = conf['dino_reso']
         self.cache_all_data = conf['cache_all_data']
         assert self.cache_all_data == False
         self.mask_out_image = conf['mask_out_image']
@@ -127,6 +128,11 @@ class Dataset:
         self.masks  = torch.from_numpy(self.masks_np.astype(np.float32)).cpu()   # n_images, H, W, 3   # Save GPU memory
         h_img, w_img, _ = self.images[0].shape
         logging.info(f"Resolution level: {self.resolution_level}. Image size: ({w_img}, {h_img})")
+
+        # dino_feat, _ = read_images(f'{self.data_dir}/dino_feature', img_ext='.npy')
+        # self.dino_feature = torch.from_numpy(dino_feat.astype(np.float32)).cpu()
+        # self.dino_dim = self.dino_feature.shape[-1]
+        # self.dino_feature = self.dino_feature.permute(0, 3, 1, 2).to(self.device) # [N, C, H, W]
 
         if self.use_normal:
             logging.info(f'[Use normal] Loading estimated normals...')
@@ -259,6 +265,8 @@ class Dataset:
         else:
             self.bbox_min = np.array([-1.01*self.bbox_size_half, -1.01*self.bbox_size_half, -1.01*self.bbox_size_half])
             self.bbox_max = np.array([ 1.01*self.bbox_size_half,  1.01*self.bbox_size_half,  1.01*self.bbox_size_half])
+
+        # self.build_feature_volume()
 
         self.iter_step = 0
         
@@ -450,6 +458,61 @@ class Dataset:
         rays_v = torch.matmul(self.pose_all[img_idx, None, :3, :3], rays_v[:, :, None]).squeeze()  # batch_size, 3
         rays_o = self.pose_all[img_idx, None, :3, 3].expand(rays_v.shape) # batch_size, 3
         return torch.cat([rays_o.cpu(), rays_v.cpu(), color, mask[:, :1]], dim=-1).cuda()    # batch_size, 10
+    
+    def build_feature_volume(self):
+        with torch.no_grad():
+            X = torch.linspace(-1, 1, steps=self.reso)
+            Y = torch.linspace(-1, 1, steps=self.reso)
+            Z = torch.linspace(-1, 1, steps=self.reso)
+
+            xx, yy, zz = torch.meshgrid(X, Y, Z)
+            pts = torch.cat([zz.reshape(-1, 1), yy.reshape(-1, 1), xx.reshape(-1, 1)], dim=-1)
+            pts = pts.reshape(-1, 3)
+
+            self.feature_volume = []
+            bs = 0
+            while bs < pts.shape[0]:
+                feat, _ = self.get_feature(pts[bs: bs+1024, :])
+                self.feature_volume.append(feat)
+                bs += 1024
+            self.feature_volume = torch.cat(self.feature_volume, dim=0)
+            self.feature_volume = self.feature_volume.reshape(1, self.reso, self.reso, self.reso, self.dino_dim)
+            self.feature_volume = self.feature_volume.permute(0, 4, 1, 2, 3)
+
+
+    def get_feature(self, pts):
+        # pts: [512, 3]
+        # return : feature [512, 32], count [512]
+
+        # project
+        pts = torch.cat([pts, torch.ones(pts.shape[0], 1).to(pts.device)], dim=-1) # [512, 4]
+        cam_pts = torch.matmul(torch.inverse(self.pose_all[:, None, :4, :4]), pts[None, :, :, None]).squeeze() # [n_image, 512, 4]
+        cam_pts = cam_pts[..., :3] # [n_image, 512, 3]
+        pts_2d = torch.matmul(self.intrinsics_all[:, None, :3, :3], cam_pts[:, :, :, None]).squeeze() # [n_image, 512, 3]
+        img_x = pts_2d[..., 0] / pts_2d[..., 2] # W, [n_image, 512]
+        img_y = pts_2d[..., 1] / pts_2d[..., 2] # H, [n_image, 512]
+        im_grid = torch.stack([2 * img_x / (self.W - 1) - 1, 2 * img_y / (self.H - 1) - 1], dim=-1) # [N, 512, 2]
+        mask = im_grid.abs() <= 1 
+        mask = (mask.sum(dim=-1) == 2) & (pts_2d[..., 2] > 0)
+        im_grid = im_grid.view(self.n_images, 1, -1, 2) # [N, 1, 512, 2]
+        features = F.grid_sample(self.dino_feature, im_grid, padding_mode='zeros', align_corners=True) # [N, C, 1, 512]
+        features = features.view(self.n_images, self.dino_dim, -1) # [N, C, 512]
+        mask = mask.view(self.n_images, -1) # [N, 512]
+
+        # remove nan
+        features[mask.unsqueeze(1).expand(-1, self.dino_dim, -1) == False] = 0
+        count = mask.sum(dim=0).float() # [512]
+
+        # aggregate multi view
+        features = features.sum(dim=0) # [C, 512]
+        mask = mask.sum(dim=0) # [512]
+        invalid_mask = mask == 0 
+        mask[invalid_mask] = 1
+        in_scope_mask = mask.unsqueeze(0)
+        features /= in_scope_mask
+        features = features.permute(1, 0).contiguous() # [512, C]
+
+        return features, count
         
     def random_get_rays_at(self, img_idx, batch_size, pose = None):
         pose_cur = self.get_pose(img_idx, pose)

@@ -7,7 +7,7 @@ from tqdm import tqdm
 import numpy as np
 from sklearn.cluster import KMeans
 import copy
-
+from tqdm import tqdm
 from skimage.color import rgb2gray
 from skimage.filters import sobel
 from skimage.segmentation import felzenszwalb
@@ -100,7 +100,7 @@ def read_images(dir, target_img_size = None, interpolation=cv2.INTER_LINEAR, img
 
     rgbs = []
     img_stems = []
-    for i in range(len(vec_path)):
+    for i in tqdm(range(len(vec_path))):
         img = read_img(vec_path[i])
         if (target_img_size != None) and (target_img_size[0] != img.shape[1]):
             img= cv2.resize(img, target_img_size, interpolation=cv2.INTER_LINEAR)

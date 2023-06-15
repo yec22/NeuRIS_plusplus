@@ -256,9 +256,9 @@ class SDFNetwork_Plus(nn.Module):
         yz_index = torch.stack([mask_input[:, 1], mask_input[:, 2]], dim=-1).unsqueeze(0).unsqueeze(-2)
         xz_index = torch.stack([mask_input[:, 0], mask_input[:, 2]], dim=-1).unsqueeze(0).unsqueeze(-2)
 
-        xy_feat = grid_sample_2d(self.xy_plane, xy_index).squeeze().transpose(0, 1)
-        yz_feat = grid_sample_2d(self.yz_plane, yz_index).squeeze().transpose(0, 1)
-        xz_feat = grid_sample_2d(self.xz_plane, xz_index).squeeze().transpose(0, 1)
+        xy_feat = grid_sample_2d(self.xy_plane, xy_index).squeeze(0).squeeze(-1).transpose(0, 1)
+        yz_feat = grid_sample_2d(self.yz_plane, yz_index).squeeze(0).squeeze(-1).transpose(0, 1)
+        xz_feat = grid_sample_2d(self.xz_plane, xz_index).squeeze(0).squeeze(-1).transpose(0, 1)
         
         triplane_feat = torch.cat([xy_feat, yz_feat, xz_feat], dim=-1)
         

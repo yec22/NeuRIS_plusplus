@@ -302,19 +302,6 @@ class SDFNetwork_Plus(nn.Module):
     def coarse_sdf(self, inputs):
         inputs = inputs * self.scale
         
-        mask = (inputs[:, 0] > -1) & (inputs[:, 0] < 1) & (inputs[:, 1] > -1) & (inputs[:, 1] < 1) \
-                & (inputs[:, 2] > -1) & (inputs[:, 2] < 1)
-        mask_input = inputs[mask]
-        xy_index = torch.stack([mask_input[:, 0], mask_input[:, 1]], dim=-1).unsqueeze(0).unsqueeze(-2)
-        yz_index = torch.stack([mask_input[:, 1], mask_input[:, 2]], dim=-1).unsqueeze(0).unsqueeze(-2)
-        xz_index = torch.stack([mask_input[:, 0], mask_input[:, 2]], dim=-1).unsqueeze(0).unsqueeze(-2)
-
-        xy_feat = grid_sample_2d(self.xy_plane, xy_index).squeeze().transpose(0, 1)
-        yz_feat = grid_sample_2d(self.yz_plane, yz_index).squeeze().transpose(0, 1)
-        xz_feat = grid_sample_2d(self.xz_plane, xz_index).squeeze().transpose(0, 1)
-        
-        triplane_feat = torch.cat([xy_feat, yz_feat, xz_feat], dim=-1)
-        
         if self.use_emb_c2f and self.multires > 0:
             inputs, weigth_emb_c2f = positional_encoding_c2f(inputs, self.multires, emb_c2f=[self.emb_c2f_start, self.emb_c2f_end], alpha_ratio = (self.iter_step / self.end_iter))
             self.weigth_emb_c2f = weigth_emb_c2f
@@ -335,9 +322,7 @@ class SDFNetwork_Plus(nn.Module):
             if l < self.num_layers - 2:
                 x = self.activation(x)
         
-        hidden = x[:, 1:]
         sdf = x[:, :1]
-
         return sdf / self.scale
 
     def sdf(self, x):

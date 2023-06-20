@@ -195,6 +195,19 @@ def evaluate_geometry_neucon(file_pred, file_trgt, threshold=.05, down_sample=.0
     dist1 = np.array(dist1)
     dist2 = np.array(dist2)
 
+    # import pdb; pdb.set_trace()
+    
+        
+    precision_verts = verts_pred[dist2 < threshold]
+    recall_verts = verts_trgt[dist1 < threshold]
+    precision_pcl = o3d.geometry.PointCloud()
+    precision_pcl.points = o3d.utility.Vector3dVector(precision_verts)
+    recall_pcl = o3d.geometry.PointCloud()
+    recall_pcl.points = o3d.utility.Vector3dVector(recall_verts)
+    
+    GeoUtils.write_point_cloud(IOUtils.add_file_name_suffix(file_pred, '_precision_pcl'),precision_pcl)
+    GeoUtils.write_point_cloud(IOUtils.add_file_name_suffix(file_pred, '_recall_pcl'),recall_pcl)
+
     precision = np.mean((dist2 < threshold).astype('float'))
     recal = np.mean((dist1 < threshold).astype('float'))
     fscore = 2 * precision * recal / (precision + recal)
@@ -207,6 +220,7 @@ def evaluate_geometry_neucon(file_pred, file_trgt, threshold=.05, down_sample=.0
     # plot graph
     # if path_fscore_curve:
     #     EvalUtils.draw_figure_fscore(path_fscore_curve, threshold, dist2, dist1, plot_stretch=5)
+
 
     metrics = np.array([np.mean(dist2), np.mean(dist1), precision, recal, fscore])
     logging.info(f'{file_pred.split("/")[-1]}: {metrics}')
@@ -303,5 +317,3 @@ def save_evaluation_results_to_latex(path_log,
             mean_results = np.round(mean_results, decimals=precision)
             f_log.writelines(( '       Mean    ' + " &{: 8.3f} " * num_metrices).format(*mean_results[:].tolist()) + " \\\ \n")
  
-
-

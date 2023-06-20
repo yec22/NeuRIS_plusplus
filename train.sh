@@ -1,1 +1,1 @@
-python ./exp_runner.py --mode train --conf ./confs/neuris_plus_0084.conf --gpu 3
+python ./exp_runner.py --mode train --conf ./confs/neuris_plus_0616.conf --gpu 7

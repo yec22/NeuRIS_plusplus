@@ -79,8 +79,8 @@ class Dataset:
         
         images_lis = None
         for ext in ['.png', '.JPG']:
-            images_lis = sorted(glob(os.path.join(self.data_dir, f'image/*{ext}')))
-            self.vec_stem_files = get_files_stem(f'{self.data_dir}/image', ext_file=ext)
+            images_lis = sorted(glob(os.path.join(self.data_dir, f'image_process/*{ext}')))
+            self.vec_stem_files = get_files_stem(f'{self.data_dir}/image_process', ext_file=ext)
             if len(images_lis) > 0:
                 break
         assert len(images_lis) > 0
@@ -98,6 +98,10 @@ class Dataset:
 
         if self.mask_out_image:
             self.images_np[np.where(self.masks_np < 0.5)] = 0.0
+        
+        weight_list = sorted(glob(os.path.join(self.data_dir, f'weight/*.npy')))
+        self.weight_np = np.stack([np.load(name) for name in weight_list])
+        self.weights  = torch.from_numpy(self.weight_np.astype(np.float32)).cpu()
 
         # world_mat: projection matrix: world to image
         self.world_mats_np = [camera_dict['world_mat_%d' % idx].astype(np.float32) for idx in range(self.n_images)]
@@ -137,7 +141,7 @@ class Dataset:
         if self.use_normal:
             logging.info(f'[Use normal] Loading estimated normals...')
             normals_np = []
-            normals_npz, stems_normal = read_images(f'{self.data_dir}/pred_normal', target_img_size=(w_img, h_img), img_ext='.npz')
+            normals_npz, stems_normal = read_images(f'{self.data_dir}/pred_normal_refine', target_img_size=(w_img, h_img), img_ext='.npz')
             assert len(normals_npz) == self.n_images
             for i in tqdm(range(self.n_images)):
                 normal_img_curr = normals_npz[i]
@@ -293,7 +297,7 @@ class Dataset:
                 self.images_denoise_np = np.array(self.images_denoise_np)
 
                 # save denoised images
-                stems_imgs = get_files_stem(f'{self.data_dir}/image', '.png')
+                stems_imgs = get_files_stem(f'{self.data_dir}/image_process', '.png')
                 write_images(dir_denoise, self.images_denoise_np, stems_imgs)
             else:
                 logging.info(f'Load predenoised images by openCV structural denoise: {dir_denoise}')
@@ -521,7 +525,8 @@ class Dataset:
         pixels_y = torch.randint(low=0, high=self.H, size=[batch_size])
             
         color = self.images[img_idx][(pixels_y, pixels_x)]    # batch_size, 3
-        mask = self.masks[img_idx][(pixels_y, pixels_x)][:,None]     # batch_size, 3
+        mask = self.masks[img_idx][(pixels_y, pixels_x)][:,None]     # batch_size, 1
+        weight = self.weights[img_idx][(pixels_y, pixels_x)][:,None] # batch_size, 1
         p = torch.stack([pixels_x, pixels_y, torch.ones_like(pixels_y)], dim=-1).float()  # batch_size, 3
         p = torch.matmul(self.intrinsics_all_inv[img_idx, None, :3, :3], p[:, :, None]).squeeze() # batch_size, 3
         rays_v = p / torch.linalg.norm(p, ord=2, dim=-1, keepdim=True)    # batch_size, 3
@@ -540,7 +545,7 @@ class Dataset:
         if self.use_plane_offset_loss:
             subplanes_sample = self.subplanes[img_idx][(pixels_y, pixels_x)].unsqueeze(-1).cuda()
 
-        return torch.cat([rays_o.cpu(), rays_v.cpu(), color, mask], dim=-1).cuda(), pixels_x, pixels_y, normal_sample, planes_sample, subplanes_sample    # batch_size, 10
+        return torch.cat([rays_o.cpu(), rays_v.cpu(), color, mask, weight], dim=-1).cuda(), pixels_x, pixels_y, normal_sample, planes_sample, subplanes_sample    # batch_size, 10
 
     def near_far_from_sphere(self, rays_o, rays_d):
         # torch

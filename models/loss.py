@@ -131,6 +131,9 @@ class NeuSLoss(nn.Module):
         weights = render_out['weights']
         depth = render_out['depth']
 
+        uncertainty_normal_weight = input_model['normal_weight']
+        # uncertainty_normal_weight[uncertainty_normal_weight < 0.1] = 0.1
+
         planes_gt = None
         if 'planes_gt' in input_model:
             planes_gt = input_model['planes_gt']
@@ -201,6 +204,8 @@ class NeuSLoss(nn.Module):
 
             thres_clip_angle = -1 #
             normal_certain_weight = normal_certain_weight*mask_use_normals_target
+            normal_certain_weight = normal_certain_weight*uncertainty_normal_weight
+
             angular_error, mask_keep_gt_normal = TrainingUtils.get_angular_error(normals_fine, normals_gt, normal_certain_weight, thres_clip_angle)
 
             normals_fine_loss = angular_error

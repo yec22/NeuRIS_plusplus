@@ -225,7 +225,7 @@ class Runner:
         self.curr_img_idx = idx_img
         data, pixels_x, pixels_y,  normal_sample, planes_sample, subplanes_sample = self.dataset.random_get_rays_at(idx_img, self.batch_size)
         
-        rays_o, rays_d, true_rgb, true_mask = data[:, :3], data[:, 3: 6], data[:, 6: 9], data[:, 9: 10]
+        rays_o, rays_d, true_rgb, true_mask, normal_weight = data[:, :3], data[:, 3: 6], data[:, 6: 9], data[:, 9: 10], data[:, 10:]
         true_mask =  (true_mask > 0.5).float()
         mask = true_mask
 
@@ -266,7 +266,8 @@ class Runner:
             'pixels_y': pixels_y,   # v,
             'pixels_uv': pixels_uv,
             'pixels_vu': pixels_vu,
-            'idx': idx_img
+            'idx': idx_img,
+            'normal_weight': normal_weight
         })
         return input_model, logs_input
 

@@ -282,6 +282,31 @@ def evaluate_3D_mesh(path_mesh_pred, scene_name, dir_dataset = './dataset/indoor
 
     return metrices_eval
 
+def postprocess(path_mesh_pred, scene_name, dir_dataset = './dataset/indoor',
+                            eval_threshold = 0.05, reso_level = 2.0, 
+                            check_existence = True):
+    '''Evaluate geometry quality of neus using Precison, Recall and F-score.
+    '''
+    target_img_size = (640, 480)
+    dir_scan = f'{dir_dataset}/{scene_name}'
+    path_intrin = f'{dir_scan}/intrinsics.txt'
+    dir_poses = f'{dir_scan}/pose'
+    path_mesh_gt = f'{dir_scan}/point_cloud_openMVS.ply'
+    
+
+    # (2) clean predicted mesh
+    path_mesh_pred_clean_bbox = IOUtils.add_file_name_suffix(path_mesh_pred, '_clean_bbox')
+    path_mesh_pred_clean_bbox_faces = IOUtils.add_file_name_suffix(path_mesh_pred, '_final')
+
+    GeoUtils.clean_mesh_points_outside_bbox(path_mesh_pred_clean_bbox, path_mesh_pred, path_mesh_gt,
+                                                scale_bbox=1.1,
+                                                check_existence = check_existence)
+    GeoUtils.clean_mesh_faces_outside_frustum(path_mesh_pred_clean_bbox_faces, path_mesh_pred_clean_bbox, 
+                                                    path_intrin, dir_poses, 
+                                                    target_img_size, reso_level=reso_level,
+                                                    check_existence = check_existence)
+
+
 def save_evaluation_results_to_latex(path_log, 
                                         header = '                     Accu.      Comp.      Prec.     Recall     F-score \n', 
                                         results = None, 

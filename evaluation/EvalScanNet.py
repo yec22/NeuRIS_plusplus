@@ -336,7 +336,7 @@ def save_evaluation_results_to_latex(path_log,
             if names_item is None:
                 names_item = np.arange(results.shape[0])
             for idx in range(num_lines):
-                f_log.writelines((f'{names_item[idx]}    ' + ("&{: 8.3f}  " * num_metrices).format(*results[idx, :].tolist())) + " \\\ \n")
+                f_log.writelines((f'{names_item}    ' + ("&{: 8.3f}  " * num_metrices).format(*results[idx, :].tolist())) + " \\\ \n")
         if save_mean:
             mean_results = results.mean(axis=0)     # 4*7
             mean_results = np.round(mean_results, decimals=precision)

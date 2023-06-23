@@ -1,11 +1,6 @@
 # NeuRIS
 We propose a new method, dubbed NeuRIS, for high quality reconstruction of indoor scenes. 
 
-![](./doc/teaser.png)
-
-## [Project page](https://jiepengwang.github.io/NeuRIS/) |  [Paper](https://arxiv.org/abs/2206.13597) | [Data](https://connecthkuhk-my.sharepoint.com/:f:/g/personal/jiepeng_connect_hku_hk/Er7bpbBAxMBBnZfDvdvrO1kBu2tkTpnMw9XXfeuQzkwOlA?e=Yf0Bbj)
-
-
 ## Usage
 
 #### Data preparation
@@ -61,14 +56,4 @@ python exp_runner.py --mode validate_mesh --conf <config_file> --is_continue
 python ./exp_evaluation.py --mode eval_3D_mesh_metrics
 ```
 
-## Citation
-Cite as below if you find this repository is helpful to your project:
 
-```
-@article{wang2022neuris,
-      	title={NeuRIS: Neural Reconstruction of Indoor Scenes Using Normal Priors}, 
-      	author={Wang, Jiepeng and Wang, Peng and Long, Xiaoxiao and Theobalt, Christian and Komura, Taku and Liu, Lingjie and Wang, Wenping},
-	publisher = {arXiv},
-      	year={2022}
-}
-```

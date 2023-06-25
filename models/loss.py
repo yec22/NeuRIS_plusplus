@@ -195,14 +195,14 @@ class NeuSLoss(nn.Module):
         # normal loss
         normals_fine_loss, mask_keep_gt_normal = 0.0, torch.ones(batch_size)
         if self.normal_weight > 0 and normals_target is not None:
-            normals_gt = normals_target # input_model['normals_gt'] #
+            normals_gt = normals_target # input_model['normals_gt']
             normals_fine = render_out['normal']
             
             normal_certain_weight = torch.ones(batch_size, 1).bool()
             if 'normal_certain_weight' in input_model:
                 normal_certain_weight = input_model['normal_certain_weight']
 
-            thres_clip_angle = -1 #
+            thres_clip_angle = -1
             normal_certain_weight = normal_certain_weight*mask_use_normals_target
             normal_certain_weight = normal_certain_weight*uncertainty_normal_weight
 

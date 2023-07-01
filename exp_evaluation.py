@@ -41,7 +41,7 @@ if __name__ == '__main__':
         logging.info(f'\n\nProcess: {scene_name}')
 
         prefix = scene_name.split('_')[0]
-        path_mesh_pred = f'exps/indoor/neus/{scene_name}/exp_{prefix}_plus/meshes/000{args.iter}_reso{args.reso}_{scene_name}_world.ply'
+        path_mesh_pred = f'exps/indoor/neus/{scene_name}/exp_{prefix}_full/meshes/000{args.iter}_reso{args.reso}_{scene_name}_world.ply'
         metrics_eval =  EvalScanNet.evaluate_3D_mesh(path_mesh_pred, scene_name, dir_dataset = './dataset/indoor',
                                                                 eval_threshold = 0.05, reso_level = 2, 
                                                                 check_existence = check_existence)

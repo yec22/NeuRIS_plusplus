@@ -5,3 +5,4 @@ segment-anything/ckpt
 **egg**
 .vscode
 snucode/checkpoints
+uncertainty/checkpoints

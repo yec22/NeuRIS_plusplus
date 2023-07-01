@@ -53,21 +53,21 @@ def test(model, test_loader, device, results_dir):
             plt.imsave(target_path, pred_norm_rgb[0, :, :, :])
 
             # 3. predicted uncertainty
-            pred_alpha = utils.kappa_to_alpha(pred_kappa)
-            uncertainty = pred_alpha[0, :, :, 0]
-            target_path = '%s/%s_uncertainty.png' % (results_dir, img_name)
+            # pred_alpha = utils.kappa_to_alpha(pred_kappa)
+            # uncertainty = pred_alpha[0, :, :, 0]
+            # target_path = '%s/%s_uncertainty.png' % (results_dir, img_name)
 
             # plt.imsave(target_path, uncertainty, vmin=0.0, vmax=alpha_max, cmap='jet')
             
             # 4. normal weight
-            u_max = uncertainty.max()
-            u_min = uncertainty.min()
+            # u_max = uncertainty.max()
+            # u_min = uncertainty.min()
 
-            weight = (uncertainty - u_min) / (u_max - u_min)
-            plt.imsave(target_path, weight)
+            # weight = (uncertainty - u_min) / (u_max - u_min)
+            # plt.imsave(target_path, weight)
 
-            target_path = '%s/%s_weight.npy' % (results_dir, img_name)
-            np.save(target_path, 1 - weight)
+            # target_path = '%s/%s_weight.npy' % (results_dir, img_name)
+            # np.save(target_path, 1 - weight)
 
 
 

@@ -651,11 +651,12 @@ def crop_images(dir_images_origin, dir_images_crop, crop_size, img_ext = '.png')
         img_curr = imgs[i]
         H_origin, W_origin = img_curr.shape[:2]
         
-        crop_width_half = (W_origin-W_target)//2
-        crop_height_half = (H_origin-H_target) //2
-        assert (W_origin-W_target)%2 ==0 and (H_origin- H_target) %2 == 0
+        crop_width_half = (W_origin-W_target) // 2
+        crop_height_half = (H_origin-H_target) // 2
+        assert (W_origin-W_target)% 2 == 0 and (H_origin- H_target) % 2 == 0
         
         img_crop = img_curr[crop_height_half:H_origin-crop_height_half, crop_width_half:W_origin-crop_width_half]
+        img_crop = cv2.resize(img_crop, (640, 480))
         if img_ext == '.png':
             write_image(f'{dir_images_crop}/{stems_img[i]}.png', img_crop)
         elif img_ext == '.npy':
@@ -664,6 +665,25 @@ def crop_images(dir_images_origin, dir_images_crop, crop_size, img_ext = '.png')
             raise NotImplementedError
         
     return crop_width_half, crop_height_half
+
+#image editting
+def crop_images_resize(dir_images_origin, dir_images_crop, crop_size, img_ext = '.png'):
+    IOUtils.ensure_dir_existence(dir_images_crop)
+    imgs, stems_img = read_images(dir_images_origin, img_ext = img_ext)
+    W_target, H_target = crop_size
+    for i in range(len(imgs)):
+        img_curr = imgs[i]
+        H_origin, W_origin = img_curr.shape[:2]
+        
+        img_crop = cv2.resize(img_curr, crop_size)
+        if img_ext == '.png':
+            write_image(f'{dir_images_crop}/{stems_img[i]}.png', img_crop)
+        elif img_ext == '.npy':
+            np.save(f'{dir_images_crop}/{stems_img[i]}.npy', img_crop)
+        else:
+            raise NotImplementedError
+        
+    return W_target, H_target
 
 def split_video_to_frames(path_video, dir_images):
     IOUtils.ensure_dir_existence(dir_images)

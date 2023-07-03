@@ -18,6 +18,23 @@ def modify_intrinsics_of_cropped_images(path_intrin, path_intrin_save, crop_widt
     intrin = np.loadtxt(path_intrin)
     intrin[0, 2] = intrin[0, 2] - crop_width_half
     intrin[1, 2] = intrin[1, 2] - crop_height_half
+
+    intrin[0, 0] = intrin[0, 0] / 2
+    intrin[0, 2] = intrin[0, 2] / 2
+
+    intrin[1, 1] = intrin[1, 1] / 2
+    intrin[1, 2] = intrin[1, 2] / 2
+    
+    np.savetxt(path_intrin_save, intrin, fmt='%f')
+    return intrin
+
+def modify_intrinsics_of_cropped_images_scale(path_intrin, path_intrin_save, crop_width_half, crop_height_half):
+    intrin = np.loadtxt(path_intrin)
+    intrin[0, 0] = intrin[0, 0] / 3
+    intrin[0, 2] = intrin[0, 2] / 3
+
+    intrin[1, 1] = intrin[1, 1] / 3
+    intrin[1, 2] = intrin[1, 2] / 3
     np.savetxt(path_intrin_save, intrin, fmt='%f')
     return intrin
     

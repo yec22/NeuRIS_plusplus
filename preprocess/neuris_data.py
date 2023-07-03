@@ -17,15 +17,20 @@ import utils.utils_geometry as GeoUtils
 import utils.utils_image  as ImageUtils
 import utils.utils_io as IOUtils
 
-from confs.path import path_tiltedsn_pth_pfpn, path_tiltedsn_pth_sr, dir_tiltedsn_code, \
-                            path_snu_pth, dir_snu_code, \
-                            lis_name_scenes_remove
+# from confs.path import path_tiltedsn_pth_pfpn, path_tiltedsn_pth_sr, dir_tiltedsn_code, \
+#                             path_snu_pth, dir_snu_code, \
+#                             lis_name_scenes_remove
 
 
-def crop_images_neuris(dir_imgs, dir_imgs_crop, path_intrin, path_intrin_crop, crop_size):
+def crop_images_neuris(dir_imgs, dir_imgs_crop, path_intrin, path_intrin_crop, crop_size, origin_size):
     assert checkExistence(dir_imgs)
-    crop_width_half, crop_height_half = ImageUtils.crop_images(dir_imgs, dir_imgs_crop, crop_size)
-    GeoUtils.modify_intrinsics_of_cropped_images(path_intrin, path_intrin_crop,  crop_width_half, crop_height_half)
+    if origin_size[0] == 1920 and origin_size[1] == 1440:
+        crop_width_half, crop_height_half = ImageUtils.crop_images_resize(dir_imgs, dir_imgs_crop, crop_size)
+        GeoUtils.modify_intrinsics_of_cropped_images_scale(path_intrin, path_intrin_crop,  crop_width_half, crop_height_half)
+    elif origin_size[0] == 1920 and origin_size[1] == 1080:
+        crop_width_half, crop_height_half = ImageUtils.crop_images(dir_imgs, dir_imgs_crop, (1280, 960))
+        GeoUtils.modify_intrinsics_of_cropped_images(path_intrin, path_intrin_crop,  crop_width_half, crop_height_half)
+
     
 def extract_planes_from_normals(dir_normal, thres_uncertain = 70, folder_name_planes = 'pred_normal_planes', n_clusters = 12):
     vec_path_files = sorted(glob.glob(f'{dir_normal}/**.npz'))

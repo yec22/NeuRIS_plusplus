@@ -6,3 +6,4 @@ segment-anything/ckpt
 .vscode
 snucode/checkpoints
 uncertainty/checkpoints
+tmp

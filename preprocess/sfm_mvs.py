@@ -203,7 +203,7 @@ def prepare_neus_data(dir_sfm_output, dir_neus, imgs_cal_stem, args):
     dir_src = f'{dir_sfm_output}'
     dir_target = f'{dir_sfm_output}/depth_calibrated'
     assert args.reso_level == 1
-    select_depths(dir_src, dir_target, imgs_cal_stem, (args.image_width, args.image_height))
+    # select_depths(dir_src, dir_target, imgs_cal_stem, (args.image_width, args.image_height))
     
     # cameras
     dir_src = f'{dir_sfm_output}/cameras/extrinsics'

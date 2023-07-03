@@ -11,8 +11,6 @@ import utils.utils_image  as ImageUtils
 import utils.utils_io as IOUtils
 import utils.utils_normal as NormalUtils
 
-from confs.path import lis_name_scenes
-
 if __name__ == '__main__':
     np.set_printoptions(precision=3)
     np.set_printoptions(suppress=True)
@@ -27,35 +25,21 @@ if __name__ == '__main__':
 
     dataset_type = args.data_type
     
-    if dataset_type == 'scannet':
-        dir_root_scannet = '/media/hp/HKUCS2/Dataset/ScanNet'
-        dir_root_neus = f'{dir_root_scannet}/sample_neus'
-
-        for scene_name in lis_name_scenes:
-            dir_scan = f'{dir_root_scannet}/{scene_name}'
-            dir_neus = f'{dir_root_neus}/{scene_name}'
-            neuris_data.prepare_neuris_data_from_scannet(dir_scan, dir_neus, sample_interval=6, 
-                                                b_sample = True, 
-                                                b_generate_neus_data = True,
-                                                b_pred_normal = True, 
-                                                b_detect_planes = False,
-                                                b_unify_labels = False) 
-    
     if dataset_type == 'private':
         # example of processing iPhone video
         # put a video under folder tmp_sfm_mvs or put your images under tmp_sfm_mvs/images
-        dir_neuris = '/home/ethan/Desktop/test_sfm'
+        dir_neuris = '/data/yesheng/3D-Scene/NeuRIS_plusplus/tmp'
         
         dir_neuris = os.path.abspath(dir_neuris)
-        dir_sfm_mvs = os.path.abspath(f'{dir_neuris}/tmp_sfm_mvs')
+        dir_sfm_mvs = os.path.abspath(f'{dir_neuris}/TNT')
         
         crop_image = True
-        original_size_img = (1920, 1080)
-        cropped_size_img = (1360, 1020) # cropped images for normal estimation
-        reso_level = 1          
+        original_size_img = (1920, 1080) # (1920, 1440)
+        cropped_size_img = (640, 480) # must be (640, 480)
+        reso_level = 1
         
         # split video into frames and sample images
-        b_split_images = True
+        b_split_images = False
         path_video = f'{dir_sfm_mvs}/video.MOV'
         dir_split = f'{dir_sfm_mvs}/images_split'
         dir_mvs_sample = f'{dir_sfm_mvs}/images' # for mvs reconstruction
@@ -67,10 +51,10 @@ if __name__ == '__main__':
 
         # sample images
         b_sample = True
-        sample_interval = 10
+        sample_interval = 1
         if b_sample:
             rename_mode = 'order_04d'
-            ext_source = '.png' 
+            ext_source = '.jpg'
             ext_target = '.png'
             ImageUtils.convert_images_type(dir_split, dir_mvs_sample, rename_mode, 
                                             target_img_size = None, ext_source = ext_source, ext_target =ext_target, 
@@ -87,20 +71,15 @@ if __name__ == '__main__':
                                 dir_imgs_crop = dir_neuris_sample_cropped, 
                                 path_intrin = f'{dir_sfm_mvs}/intrinsics.txt', 
                                 path_intrin_crop = f'{dir_neuris}/intrinsics.txt', 
-                                crop_size = cropped_size_img)
-
-            # crop depth
-            if IOUtils.checkExistence(f'{dir_sfm_mvs}/depth_calibrated'):
-                ImageUtils.crop_images(dir_images_origin = f'{dir_sfm_mvs}/depth_calibrated',
-                                            dir_images_crop = f'{dir_neuris}/depth', 
-                                            crop_size = cropped_size_img, 
-                                            img_ext = '.npy')
+                                crop_size = cropped_size_img,
+                                origin_size = original_size_img)
+            
         
         b_prepare_neus = True
         if b_prepare_neus:
             neuris_data.prepare_neuris_data_from_private_data(dir_neuris, cropped_size_img, 
                                                             b_generate_neus_data = True,
-                                                                b_pred_normal = True, 
+                                                                b_pred_normal = False, 
                                                                 b_detect_planes = False)
             
     print('Done')

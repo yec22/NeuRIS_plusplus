@@ -31,10 +31,10 @@ if __name__ == '__main__':
         dir_neuris = '/data/yesheng/3D-Scene/NeuRIS_plusplus/tmp'
         
         dir_neuris = os.path.abspath(dir_neuris)
-        dir_sfm_mvs = os.path.abspath(f'{dir_neuris}/TNT')
+        dir_sfm_mvs = os.path.abspath(f'{dir_neuris}/demo')
         
         crop_image = True
-        original_size_img = (1920, 1080) # (1920, 1440)
+        original_size_img = (1920, 1440) # (1920, 1080)
         cropped_size_img = (640, 480) # must be (640, 480)
         reso_level = 1
         

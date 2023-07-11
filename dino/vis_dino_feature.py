@@ -146,7 +146,7 @@ if __name__ == '__main__':
     data_dir = args.data_dir
     image_file = sorted(os.listdir(os.path.join(data_dir, "image")))
 
-    for file in tqdm(image_file):
+    for idx, file in enumerate(tqdm(image_file)):
         image_path = os.path.join(data_dir, "image", file)
         print(image_path)
 
@@ -191,5 +191,6 @@ if __name__ == '__main__':
             attn = (attn - attn_min) / (attn_max - attn_min)
             attn = np.clip((attn * 255.), 0, 255).astype(np.uint8)
             cv2.imwrite(f"head{i}.png", attn)
-        exit(0)
+        if idx == 21:
+            exit(0)
         

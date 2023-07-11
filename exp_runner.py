@@ -778,12 +778,13 @@ class Runner:
                         imgs_render['color_fine']*255)
             psnr_render = 20.0 * torch.log10(1.0 / (((self.dataset.images[idx] - torch.from_numpy(imgs_render['color_fine']))**2).sum() / (imgs_render['color_fine'].size * 3.0)).sqrt())
             
-            os.makedirs(os.path.join(self.base_exp_dir, 'image_peak'), exist_ok=True)
-            ImageUtils.write_image(os.path.join(self.base_exp_dir, 'image_peak', f'{self.iter_step:08d}_{self.dataset.vec_stem_files[idx]}_reso{resolution_level}.png'), 
-                        imgs_render['color_peak']*255)    
-            psnr_peak = 20.0 * torch.log10(1.0 / (((self.dataset.images[idx] - torch.from_numpy(imgs_render['color_peak']))**2).sum() / (imgs_render['color_peak'].size * 3.0)).sqrt())
+            if save_peak_value:
+                os.makedirs(os.path.join(self.base_exp_dir, 'image_peak'), exist_ok=True)
+                ImageUtils.write_image(os.path.join(self.base_exp_dir, 'image_peak', f'{self.iter_step:08d}_{self.dataset.vec_stem_files[idx]}_reso{resolution_level}.png'), 
+                            imgs_render['color_peak']*255)    
+                psnr_peak = 20.0 * torch.log10(1.0 / (((self.dataset.images[idx] - torch.from_numpy(imgs_render['color_peak']))**2).sum() / (imgs_render['color_peak'].size * 3.0)).sqrt())
             
-            print(f'PSNR (rener, peak): {psnr_render}  {psnr_peak}')
+            print(f'PSNR (render): {psnr_render}')
         
         # (3) save images
         lis_imgs = []
@@ -1205,12 +1206,12 @@ if __name__ == '__main__':
     
     elif args.mode.startswith('validate_image'):
         if runner.model_type == 'neus':
-            for i in range(0, runner.dataset.n_images, 2):
+            for i in range(0, runner.dataset.n_images, 1):
                 t1 = datetime.now()
                 runner.validate_image(i, resolution_level=1, 
-                                            save_normalmap_npz=args.save_render_peak, 
-                                            save_peak_value=True,
-                                            save_image_render=args.nvs)
+                                            save_normalmap_npz=False, 
+                                            save_peak_value=False,
+                                            save_image_render=True)
                 logging.info(f"validating image time is : {(datetime.now()-t1).total_seconds()}")
         
         elif runner.model_type == 'nerf':

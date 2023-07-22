@@ -779,8 +779,12 @@ class Runner:
             psnr_render = 20.0 * torch.log10(1.0 / (((self.dataset.images[idx] - torch.from_numpy(imgs_render['color_fine']))**2).sum() / (imgs_render['color_fine'].size * 3.0)).sqrt())
             
             os.makedirs(os.path.join(self.base_exp_dir, 'normal_render'), exist_ok=True)
+            world_normal = -imgs_render['normal'].reshape(-1, 3)
+            world2cam = np.linalg.inv(self.dataset.get_pose(idx, None).cpu().numpy())
+            cam_normal = (np.matmul(world2cam[None, :3, :3], world_normal[:, :, None])).reshape([H, W, 3])
+
             ImageUtils.write_image(os.path.join(self.base_exp_dir, 'normal_render', f'{self.iter_step:08d}_{self.dataset.vec_stem_files[idx]}_reso{resolution_level}.png'), 
-                         (((imgs_render['normal'] + 1) * 0.5).clip(0,1) * 255).astype(np.uint8))
+                         (((cam_normal + 1) * 0.5).clip(0,1) * 255).astype(np.uint8), color_space = "RGB")
 
             os.makedirs(os.path.join(self.base_exp_dir, 'depth_render'), exist_ok=True)
             ImageUtils.write_image(os.path.join(self.base_exp_dir, 'depth_render', f'{self.iter_step:08d}_{self.dataset.vec_stem_files[idx]}_reso{resolution_level}.png'), 

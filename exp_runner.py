@@ -778,6 +778,14 @@ class Runner:
                         imgs_render['color_fine']*255)
             psnr_render = 20.0 * torch.log10(1.0 / (((self.dataset.images[idx] - torch.from_numpy(imgs_render['color_fine']))**2).sum() / (imgs_render['color_fine'].size * 3.0)).sqrt())
             
+            os.makedirs(os.path.join(self.base_exp_dir, 'normal_render'), exist_ok=True)
+            ImageUtils.write_image(os.path.join(self.base_exp_dir, 'normal_render', f'{self.iter_step:08d}_{self.dataset.vec_stem_files[idx]}_reso{resolution_level}.png'), 
+                         (((imgs_render['normal'] + 1) * 0.5).clip(0,1) * 255).astype(np.uint8))
+
+            os.makedirs(os.path.join(self.base_exp_dir, 'depth_render'), exist_ok=True)
+            ImageUtils.write_image(os.path.join(self.base_exp_dir, 'depth_render', f'{self.iter_step:08d}_{self.dataset.vec_stem_files[idx]}_reso{resolution_level}.png'), 
+                         imgs_render['depth'] / (np.max(imgs_render['depth'])+1e-6) * 255)
+
             if save_peak_value:
                 os.makedirs(os.path.join(self.base_exp_dir, 'image_peak'), exist_ok=True)
                 ImageUtils.write_image(os.path.join(self.base_exp_dir, 'image_peak', f'{self.iter_step:08d}_{self.dataset.vec_stem_files[idx]}_reso{resolution_level}.png'), 

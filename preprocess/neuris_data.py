@@ -30,6 +30,9 @@ def crop_images_neuris(dir_imgs, dir_imgs_crop, path_intrin, path_intrin_crop, c
     elif origin_size[0] == 1920 and origin_size[1] == 1080:
         crop_width_half, crop_height_half = ImageUtils.crop_images(dir_imgs, dir_imgs_crop, (1280, 960))
         GeoUtils.modify_intrinsics_of_cropped_images(path_intrin, path_intrin_crop,  crop_width_half, crop_height_half)
+    elif origin_size[0] == 1360 and origin_size[1] == 1020:
+        crop_width_half, crop_height_half = ImageUtils.crop_images(dir_imgs, dir_imgs_crop, (1280, 960))
+        GeoUtils.modify_intrinsics_of_cropped_images(path_intrin, path_intrin_crop,  crop_width_half, crop_height_half)
 
     
 def extract_planes_from_normals(dir_normal, thres_uncertain = 70, folder_name_planes = 'pred_normal_planes', n_clusters = 12):

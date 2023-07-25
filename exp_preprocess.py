@@ -34,7 +34,7 @@ if __name__ == '__main__':
         dir_sfm_mvs = os.path.abspath(f'{dir_neuris}/demo')
         
         crop_image = True
-        original_size_img = (1920, 1440) # (1920, 1080)
+        original_size_img = (1920, 1440) # (1920, 1080) / (1360, 1020)
         cropped_size_img = (640, 480) # must be (640, 480)
         reso_level = 1
         
